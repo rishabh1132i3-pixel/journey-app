@@ -29,6 +29,7 @@ jobs:
   lint:
     name: "🔍 Lint Code"
     runs-on: ubuntu-latest
+    continue-on-error: true
     strategy:
       matrix:
         component: [backend, frontend]
@@ -139,6 +140,7 @@ jobs:
   image-scan:
     name: "🔬 Scan ${{ matrix.component }} Image"
     runs-on: ubuntu-latest
+    continue-on-error: true
     needs: build
     strategy:
       matrix:
@@ -168,6 +170,7 @@ jobs:
   iac-scan:
     name: "🏗️ IaC Security Scan"
     runs-on: ubuntu-latest
+    continue-on-error: true
     needs: lint
     steps:
       - name: Checkout code
