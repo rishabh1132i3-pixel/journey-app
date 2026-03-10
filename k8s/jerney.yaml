@@ -38,10 +38,9 @@ apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
   name: jerney-ebs-sc
-provisioner: ebs.csi.aws.com
+provisioner: ebs.csi.eks.amazonaws.com
 parameters:
   type: gp3
-  fsType: ext4
   encrypted: "true"
 reclaimPolicy: Retain
 volumeBindingMode: WaitForFirstConsumer
@@ -178,9 +177,22 @@ spec:
         app.kubernetes.io/component: backend
     spec:
       automountServiceAccountToken: false
+      initContainers:
+        - name: wait-for-db
+          image: busybox:1.36
+          command:
+            - sh
+            - -c
+            - |
+              echo "Waiting for jerney-db:5432..."
+              until nc -z jerney-db 5432; do
+                echo "DB not ready, retrying in 3s..."
+                sleep 3
+              done
+              echo "DB is ready!"
       containers:
         - name: backend
-          image: BACKEND_IMAGE_PLACEHOLDER
+          image: abhishekf5/jerney-backend:latest
           ports:
             - containerPort: 5000
               protocol: TCP
@@ -283,9 +295,9 @@ spec:
       automountServiceAccountToken: false
       containers:
         - name: frontend
-          image: FRONTEND_IMAGE_PLACEHOLDER
+          image: abhishekf5/jerney-frontend:latest
           ports:
-            - containerPort: 80
+            - containerPort: 8080
               protocol: TCP
           resources:
             requests:
@@ -305,18 +317,21 @@ spec:
           livenessProbe:
             httpGet:
               path: /
-              port: 80
+              port: 8080
             initialDelaySeconds: 5
             periodSeconds: 10
           readinessProbe:
             httpGet:
               path: /
-              port: 80
+              port: 8080
             initialDelaySeconds: 3
             periodSeconds: 5
 
 ---
-# ---- Frontend Service (LoadBalancer — internet facing) ----
+# ---- Frontend Service (NodePort — for access via port-forward or node IP) ----
+# NOTE: Changed from LoadBalancer because this AWS account does not support
+# creating load balancers. Use `kubectl port-forward svc/jerney-frontend 8080:80 -n jerney`
+# to access the frontend locally.
 apiVersion: v1
 kind: Service
 metadata:
@@ -327,12 +342,12 @@ metadata:
     app.kubernetes.io/part-of: jerney
     app.kubernetes.io/component: frontend
 spec:
-  type: LoadBalancer
+  type: NodePort
   selector:
     app.kubernetes.io/name: jerney-frontend
   ports:
     - port: 80
-      targetPort: 80
+      targetPort: 8080
       protocol: TCP
 
 ---

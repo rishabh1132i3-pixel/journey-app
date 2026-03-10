@@ -1,14 +1,22 @@
 # 🛤️ Jerney — Blog Platform
 
-A Gen-Z vibe blog platform built with a 3-tier architecture, fully containerized with a complete DevSecOps pipeline.
+A Gen-Z vibe blog platform built with a 3-tier architecture — React frontend, Node.js backend, and PostgreSQL database.
 
 ![Tech Stack](https://img.shields.io/badge/React-18-61DAFB?style=flat-square&logo=react)
 ![Tech Stack](https://img.shields.io/badge/Node.js-20-339933?style=flat-square&logo=node.js)
 ![Tech Stack](https://img.shields.io/badge/PostgreSQL-16-4169E1?style=flat-square&logo=postgresql)
-![Tech Stack](https://img.shields.io/badge/Docker-Compose-2496ED?style=flat-square&logo=docker)
-![Tech Stack](https://img.shields.io/badge/Kubernetes-EKS-326CE5?style=flat-square&logo=kubernetes)
-![Tech Stack](https://img.shields.io/badge/Terraform-EKS_Auto-844FBA?style=flat-square&logo=terraform)
-![Tech Stack](https://img.shields.io/badge/GitHub_Actions-DevSecOps-2088FF?style=flat-square&logo=githubactions)
+
+---
+
+> [!IMPORTANT]
+> **Looking for the full DevSecOps implementation?**
+> Switch to the [`devops`](../../tree/devops) branch for Docker, Kubernetes (EKS Auto Mode), Terraform, CI/CD with GitHub Actions, container security scanning, and more.
+>
+> ```bash
+> git checkout devops
+> ```
+
+---
 
 ## ✨ Features
 
@@ -23,216 +31,124 @@ A Gen-Z vibe blog platform built with a 3-tier architecture, fully containerized
 ```
 ┌──────────────┐     ┌──────────────┐     ┌──────────────┐
 │   Frontend   │────▶│   Backend    │────▶│  PostgreSQL   │
-│   (React +   │◀────│  (Node.js +  │◀────│  (EBS Volume) │
+│   (React +   │◀────│  (Node.js +  │◀────│              │
 │    Nginx)    │     │   Express)   │     │              │
 │   Port 80    │     │  Port 5000   │     │  Port 5432   │
 └──────────────┘     └──────────────┘     └──────────────┘
-  Container 1          Container 2          Container 3
 ```
 
 ## 📁 Project Structure
 
 ```
 Jerney/
-├── .github/
-│   └── workflows/
-│       └── ci-cd.yml              # DevSecOps CI/CD pipeline
-├── frontend/                      # React (Vite) frontend
-│   ├── src/                       # React components & pages
-│   ├── Dockerfile                 # Multi-stage: build + Nginx
-│   ├── nginx.conf                 # Nginx config for container
-│   ├── .dockerignore
-│   ├── .eslintrc.json
+├── frontend/                # React (Vite) frontend
+│   ├── src/                 # React components & pages
+│   ├── nginx.conf           # Nginx config for serving the app
 │   └── package.json
-├── backend/                       # Node.js Express API
-│   ├── src/                       # Routes, DB connection
-│   ├── Dockerfile                 # Multi-stage: build + runtime
-│   ├── .dockerignore
-│   ├── .eslintrc.json
+├── backend/                 # Node.js Express API
+│   ├── src/                 # Routes, DB connection
 │   └── package.json
-├── k8s/
-│   └── jerney.yaml                # All K8s resources (single file)
-├── terraform/                     # EKS Auto Mode infrastructure
-│   ├── provider.tf
-│   ├── main.tf
-│   ├── variables.tf
-│   ├── outputs.tf
-│   └── terraform.tfvars
-├── deploy/                        # EC2 bare-metal deploy (main branch)
-│   ├── setup.sh
-│   └── jerney-nginx.conf
-├── docker-compose.yml             # Local dev with Docker
-├── .checkov.yml                   # IaC scanning config
-├── .gitignore
+├── deploy/                  # EC2 deployment scripts
+│   ├── setup.sh             # One-click EC2 setup script
+│   └── jerney-nginx.conf    # Nginx reverse proxy config
 └── README.md
 ```
 
 ---
 
-## 🐳 Quick Start with Docker Compose
+## 🚀 Deploy on AWS EC2
 
-The fastest way to run Jerney locally:
+### Prerequisites
+
+- An AWS EC2 instance running **Ubuntu 22.04+**
+- Security Group allowing inbound traffic on ports **22** (SSH) and **80** (HTTP)
+- SSH access to the instance
+
+### Step 1: Transfer the Code to EC2
 
 ```bash
-# Clone the repo
-git clone <YOUR_REPO_URL>
-cd Jerney
-
-# Switch to devops branch
-git checkout devops
-
-# Start everything (builds + runs)
-docker compose up --build
-
-# Access the blog
-open http://localhost
+# From your local machine
+scp -r -i your-key.pem ./Jerney ubuntu@<EC2_PUBLIC_IP>:~/Jerney
 ```
 
-**That's it!** Three containers spin up:
-- `jerney-frontend` on port **80** (Nginx + React)
-- `jerney-backend` on port **5000** (Node.js API)
-- `jerney-db` on port **5432** (PostgreSQL)
+### Step 2: SSH into the Instance
 
-To stop:
 ```bash
-docker compose down          # Stop containers
-docker compose down -v       # Stop + delete database volume
+ssh -i your-key.pem ubuntu@<EC2_PUBLIC_IP>
+```
+
+### Step 3: Run the Setup Script
+
+The `deploy/setup.sh` script installs everything and configures the app automatically:
+
+```bash
+cd ~/Jerney
+chmod +x deploy/setup.sh
+./deploy/setup.sh
+```
+
+This script will:
+1. Update system packages
+2. Install **Node.js 20.x**, **PostgreSQL 16**, **Nginx**, and **PM2**
+3. Create the database and user
+4. Install backend dependencies
+5. Build the React frontend
+6. Configure Nginx as a reverse proxy
+7. Start the backend with PM2 (auto-restarts on crash/reboot)
+
+### Step 4: Access the App
+
+Open your browser and go to:
+
+```
+http://<EC2_PUBLIC_IP>
+```
+
+### Useful Commands
+
+```bash
+pm2 status                          # Check backend status
+pm2 logs                            # View backend logs
+pm2 restart all                     # Restart backend
+sudo systemctl restart nginx        # Restart Nginx
+sudo -u postgres psql -d jerney_db  # Connect to database
 ```
 
 ---
 
-## 🔐 DevSecOps Pipeline (GitHub Actions)
+## 🧑‍💻 Local Development (Without Docker)
 
-The CI/CD pipeline runs on **every push and pull request** with these stages:
+### Prerequisites
 
-```
-┌──────────┐   ┌──────────┐   ┌──────────────┐   ┌───────────────┐   ┌────────────┐   ┌──────────────┐   ┌──────────────────┐
-│  Lint    │──▶│   SCA    │──▶│ Build & Push │──▶│  Image Scan   │──▶│  IaC Scan  │──▶│ Dockerfile   │──▶│ Update K8s       │
-│ (ESLint) │   │(npm audit)│   │   (GHCR)     │   │   (Trivy)     │   │ (Checkov)  │   │ Lint         │   │ Manifest         │
-└──────────┘   └──────────┘   └──────────────┘   └───────────────┘   └────────────┘   │ (Hadolint)   │   │ (on main only)   │
-                                                                                       └──────────────┘   └──────────────────┘
-```
+- Node.js 20+
+- PostgreSQL 16+
 
-### Pipeline Stages
-
-| Stage | Tool | What it does |
-|-------|------|--------------|
-| **Lint** | ESLint | Catches code quality issues in JS/JSX |
-| **SCA** | npm audit | Scans dependencies for known CVEs |
-| **Build** | Docker + GHCR | Builds container images, pushes to GitHub Container Registry |
-| **Image Scan** | Trivy | Scans container images for OS & library vulnerabilities |
-| **IaC Scan** | Checkov | Scans Terraform & K8s manifests for security misconfigurations |
-| **Dockerfile Lint** | Hadolint | Lints Dockerfiles for best practices |
-| **Update Manifest** | sed + git | Updates `k8s/jerney.yaml` with new image tags (main branch only) |
-
-### Security Best Practices in the Pipeline
-
-- ✅ **Least-privilege permissions** — `contents: read` by default, `write` only where needed
-- ✅ **GHCR authentication** — uses `GITHUB_TOKEN`, no external secrets
-- ✅ **Image provenance & SBOM** — build attestation enabled
-- ✅ **[skip ci]** on manifest commits — prevents infinite loops
-- ✅ **PR-safe** — images are NOT pushed on pull requests (build-only)
-- ✅ **Dependency caching** — npm & Docker layer caching for speed
-
----
-
-## ☸️ Deploy to Kubernetes (EKS)
-
-### Step 1: Provision EKS with Terraform
+### Backend
 
 ```bash
-cd terraform
+cd backend
+npm install
 
-# Initialize Terraform
-terraform init
+# Create a .env file (or export these variables)
+export DB_HOST=localhost
+export DB_PORT=5432
+export DB_USER=jerney_user
+export DB_PASSWORD=jerney_pass_2026
+export DB_NAME=jerney_db
+export PORT=5000
 
-# Preview changes
-terraform plan
-
-# Apply (creates VPC + EKS cluster)
-terraform apply
+npm start
 ```
 
-> ⏱️ EKS cluster creation takes ~15 minutes.
-
-### Step 2: Configure kubectl
+### Frontend
 
 ```bash
-aws eks update-kubeconfig --region us-east-1 --name jerney-eks
-kubectl get nodes  # Verify connection
+cd frontend
+npm install
+npm run dev
 ```
 
-### Step 3: Deploy the App
-
-```bash
-# Apply the single manifest file
-kubectl apply -f k8s/jerney.yaml
-
-# Check everything is running
-kubectl get all -n jerney
-
-# Get the LoadBalancer URL
-kubectl get svc jerney-frontend -n jerney
-```
-
-The `EXTERNAL-IP` from the frontend service is your app's public URL.
-
-### Useful kubectl Commands
-
-```bash
-kubectl get pods -n jerney                    # List pods
-kubectl logs -f deploy/jerney-backend -n jerney  # Backend logs
-kubectl logs -f deploy/jerney-frontend -n jerney # Frontend logs
-kubectl describe pod <pod-name> -n jerney     # Debug a pod
-kubectl exec -it deploy/jerney-db -n jerney -- psql -U jerney_user -d jerney_db  # DB shell
-```
-
----
-
-## 🔒 Security Practices Across the Stack
-
-### Container Security
-| Practice | Where |
-|----------|-------|
-| Non-root users | Backend Dockerfile (`appuser`), Frontend (nginx user UID 101) |
-| Multi-stage builds | Both Dockerfiles — no build tools in production image |
-| Alpine base images | Minimal attack surface |
-| `dumb-init` | Backend — proper PID 1 signal handling |
-| `no-new-privileges` | Docker Compose `security_opt` |
-| Read-only filesystem | Backend container in Compose + K8s |
-| `.dockerignore` | Prevent secrets/node_modules from leaking into images |
-
-### Kubernetes Security
-| Practice | Where |
-|----------|-------|
-| NetworkPolicies | DB only accepts traffic from Backend; Backend only from Frontend |
-| `automountServiceAccountToken: false` | All pods — no K8s API access unless needed |
-| `allowPrivilegeEscalation: false` | All containers |
-| `capabilities.drop: [ALL]` | Backend and Frontend pods |
-| `runAsNonRoot: true` | Backend and Frontend pods |
-| Resource limits | CPU and memory limits on all containers |
-| Secrets in K8s Secrets | DB credentials via `secretKeyRef`, not env literals |
-| EBS encryption | StorageClass has `encrypted: "true"` |
-| Liveness & Readiness probes | All three components |
-
-### Terraform / Infrastructure Security
-| Practice | Where |
-|----------|-------|
-| Secrets-at-rest encryption | `cluster_encryption_config` for K8s secrets |
-| Full audit logging | All EKS log types enabled |
-| Private endpoint enabled | `cluster_endpoint_private_access = true` |
-| Encrypted EBS volumes | StorageClass with `encrypted: "true"` |
-
-### CI/CD Security
-| Practice | Where |
-|----------|-------|
-| Least-privilege `permissions` | `contents: read` default, `write` only for specific jobs |
-| No external secrets | Uses built-in `GITHUB_TOKEN` for GHCR |
-| Image provenance + SBOM | Enabled in Docker build step |
-| Dependency auditing | `npm audit` for both frontend and backend |
-| Container scanning | Trivy scans for CRITICAL and HIGH CVEs |
-| IaC scanning | Checkov on Terraform + K8s manifests |
-| Dockerfile linting | Hadolint for best practices |
+The Vite dev server starts on `http://localhost:3000` and proxies `/api` requests to the backend at `http://localhost:5000`.
 
 ---
 
@@ -252,43 +168,12 @@ kubectl exec -it deploy/jerney-db -n jerney -- psql -U jerney_user -d jerney_db 
 
 ---
 
-## 🐛 Troubleshooting
-
-### Docker Compose Issues
-
-```bash
-# View logs
-docker compose logs -f
-
-# Rebuild from scratch
-docker compose down -v && docker compose up --build
-
-# Check if backend can reach DB
-docker compose exec backend sh -c "wget -qO- http://localhost:5000/api/health"
-```
-
-### Kubernetes Issues
-
-```bash
-# Pods stuck in Pending — check events
-kubectl describe pod <pod-name> -n jerney
-
-# ImagePullBackOff — check GHCR access
-kubectl get events -n jerney --sort-by='.lastTimestamp'
-
-# DB not starting — check PVC
-kubectl get pvc -n jerney
-kubectl describe pvc jerney-db-pvc -n jerney
-```
-
----
-
 ## 🌿 Branch Strategy
 
 | Branch | Purpose |
 |--------|---------|
-| `main` | Bare-metal EC2 deployment (original setup) |
-| `devops` | Containerized with full DevSecOps pipeline, K8s, Terraform |
+| `main` | Source code + EC2 bare-metal deployment |
+| `devops` | Full DevSecOps — Docker, Kubernetes (EKS), Terraform, CI/CD pipeline, security scanning |
 
 ---
 
