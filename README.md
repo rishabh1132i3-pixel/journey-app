@@ -1,311 +1,238 @@
 # 🛤️ Jerney — Blog Platform
 
-A Gen-Z vibe blog platform built with a 3-tier architecture. Write posts, drop comments, and share your hot takes with the world.
+A Gen-Z vibe blog platform built with a 3-tier architecture, fully containerized with a complete DevSecOps pipeline.
 
 ![Tech Stack](https://img.shields.io/badge/React-18-61DAFB?style=flat-square&logo=react)
 ![Tech Stack](https://img.shields.io/badge/Node.js-20-339933?style=flat-square&logo=node.js)
 ![Tech Stack](https://img.shields.io/badge/PostgreSQL-16-4169E1?style=flat-square&logo=postgresql)
-![Tech Stack](https://img.shields.io/badge/Nginx-Latest-009639?style=flat-square&logo=nginx)
+![Tech Stack](https://img.shields.io/badge/Docker-Compose-2496ED?style=flat-square&logo=docker)
+![Tech Stack](https://img.shields.io/badge/Kubernetes-EKS-326CE5?style=flat-square&logo=kubernetes)
+![Tech Stack](https://img.shields.io/badge/Terraform-EKS_Auto-844FBA?style=flat-square&logo=terraform)
+![Tech Stack](https://img.shields.io/badge/GitHub_Actions-DevSecOps-2088FF?style=flat-square&logo=githubactions)
 
 ## ✨ Features
 
-- 📝 **Create** blog posts with emoji vibes
-- ✏️ **Edit** your existing posts
-- 🗑️ **Delete** posts you're not feeling anymore
-- 💬 **Comment** on posts — interact with the community
-- 🎨 **Gen-Z UI** — dark mode, glass morphism, gradient vibes
+- 📝 Create blog posts with emoji vibes
+- ✏️ Edit your existing posts
+- 🗑️ Delete posts you're not feeling anymore
+- 💬 Comment on posts
+- 🎨 Gen-Z dark UI with glassmorphism and gradients
 
 ## 🏗️ Architecture
 
 ```
-┌─────────────┐     ┌──────────────┐     ┌──────────────┐
-│   Frontend   │────▶│   Backend    │────▶│  Database    │
-│   (React)    │◀────│  (Node.js)   │◀────│ (PostgreSQL) │
+┌──────────────┐     ┌──────────────┐     ┌──────────────┐
+│   Frontend   │────▶│   Backend    │────▶│  PostgreSQL   │
+│   (React +   │◀────│  (Node.js +  │◀────│  (EBS Volume) │
+│    Nginx)    │     │   Express)   │     │              │
 │   Port 80    │     │  Port 5000   │     │  Port 5432   │
-└─────────────┘     └──────────────┘     └──────────────┘
-     Nginx            Express API           pg driver
+└──────────────┘     └──────────────┘     └──────────────┘
+  Container 1          Container 2          Container 3
 ```
 
 ## 📁 Project Structure
 
 ```
 Jerney/
-├── frontend/            # React (Vite) frontend
-│   ├── src/
-│   │   ├── components/  # Navbar, PostCard, CommentSection, ConfirmModal
-│   │   ├── pages/       # Home, PostDetail, CreatePost, EditPost
-│   │   ├── api.js       # Axios API client
-│   │   ├── App.jsx      # Router setup
-│   │   ├── main.jsx     # Entry point
-│   │   └── index.css    # Gen-Z styles
-│   ├── index.html
-│   ├── vite.config.js
+├── .github/
+│   └── workflows/
+│       └── ci-cd.yml              # DevSecOps CI/CD pipeline
+├── frontend/                      # React (Vite) frontend
+│   ├── src/                       # React components & pages
+│   ├── Dockerfile                 # Multi-stage: build + Nginx
+│   ├── nginx.conf                 # Nginx config for container
+│   ├── .dockerignore
+│   ├── .eslintrc.json
 │   └── package.json
-├── backend/             # Node.js Express API
-│   ├── src/
-│   │   ├── index.js     # Express server entry
-│   │   ├── db.js        # PostgreSQL connection + table init
-│   │   └── routes/
-│   │       ├── posts.js     # CRUD for posts
-│   │       └── comments.js  # CRUD for comments
-│   ├── .env
+├── backend/                       # Node.js Express API
+│   ├── src/                       # Routes, DB connection
+│   ├── Dockerfile                 # Multi-stage: build + runtime
+│   ├── .dockerignore
+│   ├── .eslintrc.json
 │   └── package.json
-├── deploy/              # Deployment configs
-│   ├── setup.sh         # Automated EC2 setup script
-│   └── jerney-nginx.conf # Nginx configuration
+├── k8s/
+│   └── jerney.yaml                # All K8s resources (single file)
+├── terraform/                     # EKS Auto Mode infrastructure
+│   ├── provider.tf
+│   ├── main.tf
+│   ├── variables.tf
+│   ├── outputs.tf
+│   └── terraform.tfvars
+├── deploy/                        # EC2 bare-metal deploy (main branch)
+│   ├── setup.sh
+│   └── jerney-nginx.conf
+├── docker-compose.yml             # Local dev with Docker
+├── .checkov.yml                   # IaC scanning config
 ├── .gitignore
 └── README.md
 ```
 
 ---
 
-## 🚀 Deploy on AWS EC2 (Step-by-Step)
+## 🐳 Quick Start with Docker Compose
 
-### Step 1: Launch an EC2 Instance
-
-1. Log into the **AWS Console** → Go to **EC2** → Click **Launch Instance**
-2. Configure:
-   - **Name**: `Jerney-Blog`
-   - **AMI**: Ubuntu Server 22.04 LTS (or 24.04 LTS)
-   - **Instance type**: `t2.micro` (free tier) or `t2.small`
-   - **Key pair**: Create or select an existing key pair (e.g., `jerney-key.pem`)
-   - **Security Group** — Allow inbound rules:
-     | Type  | Port | Source    |
-     |-------|------|-----------|
-     | SSH   | 22   | Your IP   |
-     | HTTP  | 80   | 0.0.0.0/0|
-3. Click **Launch Instance**
-
-### Step 2: Connect to Your EC2 Instance
+The fastest way to run Jerney locally:
 
 ```bash
-# Make your key file secure
-chmod 400 jerney-key.pem
+# Clone the repo
+git clone <YOUR_REPO_URL>
+cd Jerney
 
-# Connect via SSH
-ssh -i jerney-key.pem ubuntu@<YOUR_EC2_PUBLIC_IP>
+# Switch to devops branch
+git checkout devops
+
+# Start everything (builds + runs)
+docker compose up --build
+
+# Access the blog
+open http://localhost
 ```
 
-### Step 3: Transfer Project Files to EC2
+**That's it!** Three containers spin up:
+- `jerney-frontend` on port **80** (Nginx + React)
+- `jerney-backend` on port **5000** (Node.js API)
+- `jerney-db` on port **5432** (PostgreSQL)
 
-**Option A: Using SCP (from your local machine)**
-
+To stop:
 ```bash
-# From your local machine, run:
-scp -i jerney-key.pem -r /path/to/Jerney ubuntu@<YOUR_EC2_PUBLIC_IP>:~/Jerney
-```
-
-**Option B: Using Git**
-
-```bash
-# On EC2 instance:
-sudo apt update && sudo apt install -y git
-git clone <YOUR_REPO_URL> ~/Jerney
-```
-
-### Step 4: Run the Automated Setup Script
-
-```bash
-# On EC2 instance:
-cd ~/Jerney
-chmod +x deploy/setup.sh
-./deploy/setup.sh
-```
-
-This script will automatically:
-- ✅ Install Node.js 20.x
-- ✅ Install and configure PostgreSQL
-- ✅ Create the database and user
-- ✅ Install and configure Nginx as a reverse proxy
-- ✅ Install PM2 (process manager)
-- ✅ Build the React frontend
-- ✅ Start the backend server
-- ✅ Set up everything to auto-start on reboot
-
-### Step 5: Access Your Blog
-
-Open your browser and go to:
-
-```
-http://<YOUR_EC2_PUBLIC_IP>
-```
-
-That's it! 🎉 Jerney is live.
-
----
-
-## 🔧 Manual Setup (If You Prefer Step-by-Step)
-
-If you'd rather set things up manually instead of running the script:
-
-### 1. Install Dependencies
-
-```bash
-# Update system
-sudo apt update && sudo apt upgrade -y
-
-# Install Node.js 20.x
-curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
-sudo apt install -y nodejs
-
-# Install PostgreSQL
-sudo apt install -y postgresql postgresql-contrib
-
-# Install Nginx
-sudo apt install -y nginx
-
-# Install PM2
-sudo npm install -g pm2
-```
-
-### 2. Configure PostgreSQL
-
-```bash
-sudo -u postgres psql
-```
-
-In the PostgreSQL shell:
-
-```sql
-CREATE USER jerney_user WITH PASSWORD 'jerney_pass_2026';
-CREATE DATABASE jerney_db OWNER jerney_user;
-GRANT ALL PRIVILEGES ON DATABASE jerney_db TO jerney_user;
-\c jerney_db
-GRANT ALL ON SCHEMA public TO jerney_user;
-\q
-```
-
-### 3. Set Up the Backend
-
-```bash
-cd ~/Jerney/backend
-
-# Install dependencies
-npm install --production
-
-# Verify .env file has correct settings:
-cat .env
-# PORT=5000
-# DB_USER=jerney_user
-# DB_PASSWORD=jerney_pass_2026
-# DB_HOST=localhost
-# DB_PORT=5432
-# DB_NAME=jerney_db
-
-# Start with PM2
-pm2 start src/index.js --name jerney-backend
-pm2 save
-```
-
-### 4. Build the Frontend
-
-```bash
-cd ~/Jerney/frontend
-npm install
-npm run build
-```
-
-### 5. Set Up the Project Directory
-
-```bash
-sudo mkdir -p /var/www/jerney
-sudo cp -r ~/Jerney/* /var/www/jerney/
-sudo chown -R $USER:$USER /var/www/jerney
-```
-
-### 6. Configure Nginx
-
-```bash
-sudo cp ~/Jerney/deploy/jerney-nginx.conf /etc/nginx/sites-available/jerney
-sudo ln -sf /etc/nginx/sites-available/jerney /etc/nginx/sites-enabled/jerney
-sudo rm -f /etc/nginx/sites-enabled/default
-sudo nginx -t
-sudo systemctl restart nginx
-sudo systemctl enable nginx
-```
-
-### 7. Enable Auto-Start on Reboot
-
-```bash
-pm2 startup systemd -u $USER --hp /home/$USER
-# Copy and run the command it outputs
-pm2 save
+docker compose down          # Stop containers
+docker compose down -v       # Stop + delete database volume
 ```
 
 ---
 
-## 🛠️ Useful Commands
+## 🔐 DevSecOps Pipeline (GitHub Actions)
 
-| Command | Description |
-|---------|-------------|
-| `pm2 status` | Check if backend is running |
-| `pm2 logs` | View backend logs in real-time |
-| `pm2 restart jerney-backend` | Restart the backend |
-| `pm2 stop jerney-backend` | Stop the backend |
-| `sudo systemctl restart nginx` | Restart Nginx |
-| `sudo systemctl status nginx` | Check Nginx status |
-| `sudo -u postgres psql -d jerney_db` | Access the database |
+The CI/CD pipeline runs on **every push and pull request** with these stages:
 
-## 🔒 Security Recommendations (Production)
-
-1. **Change the database password** in `backend/.env` and PostgreSQL
-2. **Set up HTTPS** with Let's Encrypt:
-   ```bash
-   sudo apt install certbot python3-certbot-nginx
-   sudo certbot --nginx -d yourdomain.com
-   ```
-3. **Use environment variables** instead of `.env` files
-4. **Restrict SSH access** to your IP only in the security group
-5. **Enable UFW firewall**:
-   ```bash
-   sudo ufw allow OpenSSH
-   sudo ufw allow 'Nginx Full'
-   sudo ufw enable
-   ```
-
-## 🐛 Troubleshooting
-
-### Backend won't start
-```bash
-# Check logs
-pm2 logs jerney-backend
-
-# Verify PostgreSQL is running
-sudo systemctl status postgresql
-
-# Test database connection
-sudo -u postgres psql -d jerney_db -c "SELECT 1;"
+```
+┌──────────┐   ┌──────────┐   ┌──────────────┐   ┌───────────────┐   ┌────────────┐   ┌──────────────┐   ┌──────────────────┐
+│  Lint    │──▶│   SCA    │──▶│ Build & Push │──▶│  Image Scan   │──▶│  IaC Scan  │──▶│ Dockerfile   │──▶│ Update K8s       │
+│ (ESLint) │   │(npm audit)│   │   (GHCR)     │   │   (Trivy)     │   │ (Checkov)  │   │ Lint         │   │ Manifest         │
+└──────────┘   └──────────┘   └──────────────┘   └───────────────┘   └────────────┘   │ (Hadolint)   │   │ (on main only)   │
+                                                                                       └──────────────┘   └──────────────────┘
 ```
 
-### Frontend shows blank page
-```bash
-# Ensure build completed successfully
-ls -la /var/www/jerney/frontend/dist/
+### Pipeline Stages
 
-# Check Nginx config
-sudo nginx -t
-sudo tail -20 /var/log/nginx/error.log
+| Stage | Tool | What it does |
+|-------|------|--------------|
+| **Lint** | ESLint | Catches code quality issues in JS/JSX |
+| **SCA** | npm audit | Scans dependencies for known CVEs |
+| **Build** | Docker + GHCR | Builds container images, pushes to GitHub Container Registry |
+| **Image Scan** | Trivy | Scans container images for OS & library vulnerabilities |
+| **IaC Scan** | Checkov | Scans Terraform & K8s manifests for security misconfigurations |
+| **Dockerfile Lint** | Hadolint | Lints Dockerfiles for best practices |
+| **Update Manifest** | sed + git | Updates `k8s/jerney.yaml` with new image tags (main branch only) |
+
+### Security Best Practices in the Pipeline
+
+- ✅ **Least-privilege permissions** — `contents: read` by default, `write` only where needed
+- ✅ **GHCR authentication** — uses `GITHUB_TOKEN`, no external secrets
+- ✅ **Image provenance & SBOM** — build attestation enabled
+- ✅ **[skip ci]** on manifest commits — prevents infinite loops
+- ✅ **PR-safe** — images are NOT pushed on pull requests (build-only)
+- ✅ **Dependency caching** — npm & Docker layer caching for speed
+
+---
+
+## ☸️ Deploy to Kubernetes (EKS)
+
+### Step 1: Provision EKS with Terraform
+
+```bash
+cd terraform
+
+# Initialize Terraform
+terraform init
+
+# Preview changes
+terraform plan
+
+# Apply (creates VPC + EKS cluster)
+terraform apply
 ```
 
-### Can't connect to the site
+> ⏱️ EKS cluster creation takes ~15 minutes.
+
+### Step 2: Configure kubectl
+
 ```bash
-# Verify Nginx is running
-sudo systemctl status nginx
-
-# Check if backend is running
-pm2 status
-
-# Verify EC2 security group allows port 80
+aws eks update-kubeconfig --region us-east-1 --name jerney-eks
+kubectl get nodes  # Verify connection
 ```
 
-### Database connection refused
-```bash
-# Check PostgreSQL status
-sudo systemctl status postgresql
+### Step 3: Deploy the App
 
-# Verify user can connect
-psql -U jerney_user -d jerney_db -h localhost -c "SELECT 1;"
+```bash
+# Apply the single manifest file
+kubectl apply -f k8s/jerney.yaml
+
+# Check everything is running
+kubectl get all -n jerney
+
+# Get the LoadBalancer URL
+kubectl get svc jerney-frontend -n jerney
 ```
+
+The `EXTERNAL-IP` from the frontend service is your app's public URL.
+
+### Useful kubectl Commands
+
+```bash
+kubectl get pods -n jerney                    # List pods
+kubectl logs -f deploy/jerney-backend -n jerney  # Backend logs
+kubectl logs -f deploy/jerney-frontend -n jerney # Frontend logs
+kubectl describe pod <pod-name> -n jerney     # Debug a pod
+kubectl exec -it deploy/jerney-db -n jerney -- psql -U jerney_user -d jerney_db  # DB shell
+```
+
+---
+
+## 🔒 Security Practices Across the Stack
+
+### Container Security
+| Practice | Where |
+|----------|-------|
+| Non-root users | Backend Dockerfile (`appuser`), Frontend (nginx user UID 101) |
+| Multi-stage builds | Both Dockerfiles — no build tools in production image |
+| Alpine base images | Minimal attack surface |
+| `dumb-init` | Backend — proper PID 1 signal handling |
+| `no-new-privileges` | Docker Compose `security_opt` |
+| Read-only filesystem | Backend container in Compose + K8s |
+| `.dockerignore` | Prevent secrets/node_modules from leaking into images |
+
+### Kubernetes Security
+| Practice | Where |
+|----------|-------|
+| NetworkPolicies | DB only accepts traffic from Backend; Backend only from Frontend |
+| `automountServiceAccountToken: false` | All pods — no K8s API access unless needed |
+| `allowPrivilegeEscalation: false` | All containers |
+| `capabilities.drop: [ALL]` | Backend and Frontend pods |
+| `runAsNonRoot: true` | Backend and Frontend pods |
+| Resource limits | CPU and memory limits on all containers |
+| Secrets in K8s Secrets | DB credentials via `secretKeyRef`, not env literals |
+| EBS encryption | StorageClass has `encrypted: "true"` |
+| Liveness & Readiness probes | All three components |
+
+### Terraform / Infrastructure Security
+| Practice | Where |
+|----------|-------|
+| Secrets-at-rest encryption | `cluster_encryption_config` for K8s secrets |
+| Full audit logging | All EKS log types enabled |
+| Private endpoint enabled | `cluster_endpoint_private_access = true` |
+| Encrypted EBS volumes | StorageClass with `encrypted: "true"` |
+
+### CI/CD Security
+| Practice | Where |
+|----------|-------|
+| Least-privilege `permissions` | `contents: read` default, `write` only for specific jobs |
+| No external secrets | Uses built-in `GITHUB_TOKEN` for GHCR |
+| Image provenance + SBOM | Enabled in Docker build step |
+| Dependency auditing | `npm audit` for both frontend and backend |
+| Container scanning | Trivy scans for CRITICAL and HIGH CVEs |
+| IaC scanning | Checkov on Terraform + K8s manifests |
+| Dockerfile linting | Hadolint for best practices |
 
 ---
 
@@ -322,6 +249,46 @@ psql -U jerney_user -d jerney_db -h localhost -c "SELECT 1;"
 | GET | `/api/comments/post/:postId` | Get comments for a post |
 | POST | `/api/comments` | Create a comment |
 | DELETE | `/api/comments/:id` | Delete a comment |
+
+---
+
+## 🐛 Troubleshooting
+
+### Docker Compose Issues
+
+```bash
+# View logs
+docker compose logs -f
+
+# Rebuild from scratch
+docker compose down -v && docker compose up --build
+
+# Check if backend can reach DB
+docker compose exec backend sh -c "wget -qO- http://localhost:5000/api/health"
+```
+
+### Kubernetes Issues
+
+```bash
+# Pods stuck in Pending — check events
+kubectl describe pod <pod-name> -n jerney
+
+# ImagePullBackOff — check GHCR access
+kubectl get events -n jerney --sort-by='.lastTimestamp'
+
+# DB not starting — check PVC
+kubectl get pvc -n jerney
+kubectl describe pvc jerney-db-pvc -n jerney
+```
+
+---
+
+## 🌿 Branch Strategy
+
+| Branch | Purpose |
+|--------|---------|
+| `main` | Bare-metal EC2 deployment (original setup) |
+| `devops` | Containerized with full DevSecOps pipeline, K8s, Terraform |
 
 ---
 
